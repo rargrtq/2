@@ -129,6 +129,15 @@ function launchBots(count, spawnConfig) {
 
     function launchBotInstance(botSpec, i, botIdBase) {
         const nextProxy = getFreshProxy();
+
+        let tankVal = botSpec.tank;
+        if (/^[\d\s]+$/.test(tankVal)) {
+            tankVal = indicesToKeys(tankVal);
+        } else if (!tankVal.startsWith('Key')) {
+            // Only try to resolve path if it's not a direct key code
+            tankVal = getPath(tankVal, tree) || tankVal;
+        }
+
         const config = {
             id: botIdBase + i,
             proxy: nextProxy ? { type: nextProxy.type, url: nextProxy.url } : false,
@@ -142,8 +151,8 @@ function launchBots(count, spawnConfig) {
             target: spawnConfig.target || 'player',
             aim: spawnConfig.aim || 'drone',
             keys: [...(botSpec.keys || [])],
-            joinSequence: [],
-            tank: botSpec.tank,
+            joinSequence: spawnConfig.joinSequence || [],
+            tank: tankVal,
             chatSpam: spawnConfig.chatSpam || '',
             squadId: spawnConfig.squadId || 'epb',
             loadFromCache: true,
@@ -152,7 +161,7 @@ function launchBots(count, spawnConfig) {
             autospin: botSpec.autospin,
             growth_order: botSpec.growth_order,
             angle_offset: botSpec.angle_offset,
-            pathfinding: false
+            pathfinding: spawnConfig.pathfinding || false
         };
 
         const workerProcess = fork(path.join(__dirname, 'headless.js'), [], {
@@ -186,7 +195,7 @@ function launchBots(count, spawnConfig) {
         });
 
         workerProcess.send({ type: 'start', config });
-        console.log(`[SATELLITE] Bot #${config.id} launched (${botSpec.tank}). Total: ${workers.length}`);
+        console.log(`[SATELLITE] Bot #${config.id} launched (${config.tank}). Total: ${workers.length}`);
         sendStatus();
     }
 

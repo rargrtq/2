@@ -425,7 +425,9 @@ function buildSpawnConfig(type) {
         chatSpam: botConfig.chatSpam,
         launchDelay: botConfig.launchDelay,
         type: type || 'follow',
-        followServerUrl: MASTER_PUBLIC_URL
+        followServerUrl: MASTER_PUBLIC_URL,
+        joinSequence: botConfig.joinSequence,
+        pathfinding: botConfig.pathfinding
     };
 }
 
