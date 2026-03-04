@@ -812,35 +812,50 @@ if (!process.env.IS_WORKER) {
       }
     }
     let lastRecieve = 0, currentBotInterface = {};
+    let wu = process.env.FOLLOW_SERVER_URL || '';
+    let socket = false;
+
     let connect = function () {
-      log('Connecting to leader/follower server...')
-      socket = new ws(wu, {
-        "headers": {
-          "user-agent": "Mozilla/5.0 (X11; CrOS x86_64 14588.123.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36",
-          "accept-encoding": "gzip, deflate, br",
-          "accept-language": "en-US,en;q=0.9",
-          "cache-control": "no-cache",
-          "connection": "Upgrade",
+      if (!wu || wu === 'undefined') return;
+      log('Connecting to leader/follower server:', wu)
+      try {
+        socket = new ws(wu, {
+          "headers": {
+            "user-agent": "Mozilla/5.0 (X11; CrOS x86_64 14588.123.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36",
+            "accept-encoding": "gzip, deflate, br",
+            "accept-language": "en-US,en;q=0.9",
+            "cache-control": "no-cache",
+            "connection": "Upgrade",
+            "origin": "https://arras.io",
+            "pragma": "no-cache",
+            "upgrade": "websocket"
+          },
+          "followRedirects": true,
           "origin": "https://arras.io",
-          "pragma": "no-cache",
-          "upgrade": "websocket"
-        },
-        "followRedirects": true,
-        "origin": "https://arras.io",
-        "localAddress": 0,
-        "rejectUnauthorized": false
-      })
+          "rejectUnauthorized": false,
+          "handshakeTimeout": 5000
+        });
+      } catch (e) {
+        log('Failed to initiate leader socket:', e.message);
+        return;
+      }
       socket.binaryType = 'arraybuffer'
       socket.addEventListener('open', function () {
-        log('Connected to leader/follower server. Waiting for server name to subscribe.')
+        log('Connected to leader/follower server.')
+      })
+      socket.addEventListener('error', function (err) {
+        // Suppress noisy 404 logs for the follow server
+        if (err.message && err.message.includes('404')) {
+          // Silent or low-level log
+        } else {
+          log('Leader socket error:', err.message);
+        }
       })
       socket.addEventListener('message', function (e) {
         try {
           if (!currentBotInterface.target) return;
-
           let data = unpack(new Uint8Array(e.data));
           if (!data || !Array.isArray(data)) { return }
-
           const type = data.splice(0, 1)[0];
           switch (type) {
             case 101: {
@@ -856,48 +871,33 @@ if (!process.env.IS_WORKER) {
               break;
             }
             case 102: {
-              log(`Leader ${data[0]} is now inactive.`);
+              log(`Leader inactive.`);
               currentBotInterface.setActive(0);
-              currentBotInterface.setSubscribed(false);
-              break;
-            }
-            case 103: {
-              log(`Error from server: ${data[0]}`);
-              currentBotInterface.setActive(0);
-              currentBotInterface.setSubscribed(false);
-              currentBotInterface.setSubscribed(false);
               break;
             }
             case 105: {
               if (data.length >= 1) {
                 const key = data[0];
-                log(`Received Global Key Command: ${key}`);
                 if (currentBotInterface && trigger.keydown && trigger.keyup) {
-                  // Attempt to map or just send raw if compatible
-                  // headless.js 'trigger' expects 'code'
                   trigger.keydown(key);
-                  setTimeout(() => {
-                    trigger.keyup(key);
-                  }, 50);
+                  setTimeout(() => { trigger.keyup(key); }, 50);
                 }
               }
               break;
             }
           }
-        } catch (e) { log('Error processing message from server:', e); }
+        } catch (e) { }
       })
       socket.addEventListener('close', function () {
-        log('Disconnected from leader/follower server.')
-        socket = false
-        subscribedToLeader = false;
-        setTimeout(connect, 3000)
+        socket = false;
+        setTimeout(connect, 10000); // Retry every 10s if disconnected
       })
-    }, socket = false, send = function (p) {
+    }, send = function (p) {
       if (socket && socket.readyState === 1) {
         socket.send(pack(p))
       }
-    }, wu = process.env.FOLLOW_SERVER_URL || `ws://localhost:${process.env.PARENT_PORT || 5000}`, subscribedToLeader = false;
-    connect();
+    };
+    if (wu) connect();
 
     let app = false
     const wasm = function () {
