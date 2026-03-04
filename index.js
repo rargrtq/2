@@ -333,7 +333,7 @@ loadProxies();
 
 // Master's public WebSocket URL — sent to satellites so their workers can connect here
 const MASTER_PUBLIC_URL = process.env.CODESPACE_NAME
-    ? `wss://${process.env.CODESPACE_NAME}-3000.preview.app.github.dev`
+    ? `wss://${process.env.CODESPACE_NAME}-3000.app.github.dev`
     : (process.env.MASTER_PUBLIC_URL || `ws://localhost:${PORT}`);
 console.log(`[NODE] Master public URL: ${MASTER_PUBLIC_URL}`);
 
