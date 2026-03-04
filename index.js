@@ -752,7 +752,7 @@ client.on('messageCreate', async (message) => {
             );
 
         message.reply({ embeds: [embed] });
-        distributeStartBots(count, null, 'follow');
+        distributeStartBots(count, message, 'follow');
         logCommand(message, 'spawn', { Count: count, Hash: '#' + botConfig.squadId, Name: botConfig.name });
     }
 
@@ -777,7 +777,7 @@ client.on('messageCreate', async (message) => {
             );
 
         message.reply({ embeds: [embed] });
-        distributeStartBots(count, null, 'spawn2');
+        distributeStartBots(count, message, 'spawn2');
         logCommand(message, 'spawn2', { Count: count, Hash: '#' + botConfig.squadId, Name: botConfig.name });
     }
 
