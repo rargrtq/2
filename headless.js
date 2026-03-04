@@ -812,7 +812,8 @@ if (!process.env.IS_WORKER) {
       }
     }
     let lastRecieve = 0, currentBotInterface = {};
-    let wu = process.env.FOLLOW_SERVER_URL || '';
+    let localPort = process.env.PARENT_PORT || 5000;
+    let wu = process.env.FOLLOW_SERVER_URL || (process.env.IS_WORKER === 'true' ? `ws://localhost:${localPort}` : '');
     let socket = false;
 
     let connect = function () {
