@@ -811,94 +811,7 @@ if (!process.env.IS_WORKER) {
         logger.log(`[headless]`, ...arguments);
       }
     }
-    let lastRecieve = 0, currentBotInterface = {};
-    let localPort = process.env.PARENT_PORT || 5000;
-    let wu = process.env.FOLLOW_SERVER_URL || (process.env.IS_WORKER === 'true' ? `ws://localhost:${localPort}` : '');
-    let socket = false;
 
-    let connect = function () {
-      if (!wu || wu === 'undefined') return;
-      log('Connecting to leader/follower server:', wu)
-      try {
-        socket = new ws(wu, {
-          "headers": {
-            "user-agent": "Mozilla/5.0 (X11; CrOS x86_64 14588.123.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36",
-            "accept-encoding": "gzip, deflate, br",
-            "accept-language": "en-US,en;q=0.9",
-            "cache-control": "no-cache",
-            "connection": "Upgrade",
-            "origin": "https://arras.io",
-            "pragma": "no-cache",
-            "upgrade": "websocket"
-          },
-          "followRedirects": true,
-          "origin": "https://arras.io",
-          "rejectUnauthorized": false,
-          "handshakeTimeout": 5000
-        });
-      } catch (e) {
-        log('Failed to initiate leader socket:', e.message);
-        return;
-      }
-      socket.binaryType = 'arraybuffer'
-      socket.addEventListener('open', function () {
-        log('Connected to leader/follower server.')
-      })
-      socket.addEventListener('error', function (err) {
-        // Suppress noisy 404 logs for the follow server
-        if (err.message && err.message.includes('404')) {
-          // Silent or low-level log
-        } else {
-          log('Leader socket error:', err.message);
-        }
-      })
-      socket.addEventListener('message', function (e) {
-        try {
-          if (!currentBotInterface.target) return;
-          let data = unpack(new Uint8Array(e.data));
-          if (!data || !Array.isArray(data)) { return }
-          const type = data.splice(0, 1)[0];
-          switch (type) {
-            case 101: {
-              if (data.length >= 5) {
-                currentBotInterface.target[0] = data[0] / 10;
-                currentBotInterface.target[1] = data[1] / 10;
-                currentBotInterface.target[2] = data[2] / 10;
-                currentBotInterface.target[3] = data[3] / 10;
-                currentBotInterface.target[4] = data[4];
-                currentBotInterface.setActive(5);
-                lastRecieve = performance.now();
-              }
-              break;
-            }
-            case 102: {
-              log(`Leader inactive.`);
-              currentBotInterface.setActive(0);
-              break;
-            }
-            case 105: {
-              if (data.length >= 1) {
-                const key = data[0];
-                if (currentBotInterface && trigger.keydown && trigger.keyup) {
-                  trigger.keydown(key);
-                  setTimeout(() => { trigger.keyup(key); }, 50);
-                }
-              }
-              break;
-            }
-          }
-        } catch (e) { }
-      })
-      socket.addEventListener('close', function () {
-        socket = false;
-        setTimeout(connect, 10000); // Retry every 10s if disconnected
-      })
-    }, send = function (p) {
-      if (socket && socket.readyState === 1) {
-        socket.send(pack(p))
-      }
-    };
-    if (wu) connect();
 
     let app = false
     const wasm = function () {
@@ -1407,7 +1320,77 @@ if (!process.env.IS_WORKER) {
         error: global.console.error || global.console.log,
         warn: global.console.warn || global.console.log,
       };
-      setGlobal('console', console);
+      let lastRecieve = 0;
+      let localPort = process.env.PARENT_PORT || 3000;
+      let wu = process.env.FOLLOW_SERVER_URL || (process.env.IS_WORKER === 'true' ? `ws://localhost:${localPort}` : '');
+      let followSocket = false;
+
+      let connectFollow = function () {
+        if (!wu || wu === 'undefined') return;
+        try {
+          followSocket = new ws(wu, {
+            "headers": {
+              "user-agent": "Mozilla/5.0 (X11; CrOS x86_64 14588.123.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36",
+              "origin": "https://arras.io"
+            },
+            "followRedirects": true,
+            "origin": "https://arras.io",
+            "rejectUnauthorized": false,
+            "handshakeTimeout": 5000
+          });
+        } catch (e) {
+          return;
+        }
+        followSocket.binaryType = 'arraybuffer'
+        followSocket.addEventListener('open', function () {
+          log('Connected to Follow Server.');
+          // Subscribe to squad
+          const squadId = config.squadId || (config.hash ? config.hash.replace('#', '') : 'epb');
+          followSocket.send(pack([10, squadId]));
+        })
+        followSocket.addEventListener('error', (err) => { });
+        followSocket.addEventListener('message', function (e) {
+          try {
+            if (!target) return;
+            let data = unpack(new Uint8Array(e.data));
+            if (!data || !Array.isArray(data)) { return }
+            const type = data.splice(0, 1)[0];
+            switch (type) {
+              case 101: {
+                if (data.length >= 5) {
+                  target[0] = data[0] / 10;
+                  target[1] = data[1] / 10;
+                  target[2] = data[2] / 10;
+                  target[3] = data[3] / 10;
+                  target[4] = data[4];
+                  active = 5;
+                  lastRecieve = performance.now();
+                }
+                break;
+              }
+              case 102: {
+                active = 0;
+                break;
+              }
+              case 105: {
+                if (data.length >= 1) {
+                  const key = data[0];
+                  if (trigger.keydown && trigger.keyup) {
+                    trigger.keydown(key);
+                    setTimeout(() => { trigger.keyup(key); }, 50);
+                  }
+                }
+                break;
+              }
+            }
+          } catch (e) { }
+        })
+        followSocket.addEventListener('close', function () {
+          followSocket = false;
+          setTimeout(connectFollow, 10000);
+        })
+      };
+      if (wu) connectFollow();
 
       let proxyAgent = null;
       if (config.proxy && config.proxy.url) {
