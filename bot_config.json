@@ -1,0 +1,55 @@
+{
+  "squadId": "ca1916",
+  "name": "",
+  "tank": "Auto4",
+  "tankMode": "single",
+  "activePreset": "Testing & Classic",
+  "keys": [],
+  "joinSequence": [],
+  "autoFire": false,
+  "autoRespawn": true,
+  "target": "mouse",
+  "aim": "movement",
+  "chatSpam": ".",
+  "stats": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    9,
+    0,
+    0
+  ],
+  "launchDelay": 20,
+  "pathfinding": false,
+  "region": "eps",
+  "nameMode": "fixed",
+  "nameFile": "irl_names.txt",
+  "multiTankConfig": [
+    {
+      "tank": "Mingler",
+      "count": 5,
+      "keys": []
+    },
+    {
+      "tank": "Crackshot",
+      "count": 5,
+      "keys": []
+    },
+    {
+      "tank": "Leviathan",
+      "count": 5,
+      "keys": []
+    },
+    {
+      "tank": "Firework",
+      "count": 5,
+      "keys": []
+    }
+  ],
+  "reconnectAttempts": 3,
+  "reconnectDelay": 20000
+}
