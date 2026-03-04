@@ -196,13 +196,18 @@ async function logCommand(message, commandName, details = {}) {
     } catch (err) { }
 }
 
-function checkPermission(member) {
-    if (!member) return false;
+function checkPermission(message) {
+    if (!message) return false;
+    const authorId = message.author ? message.author.id : (message.id || '');
+    // Owner bypass
+    if (authorId === '1252643126204694548') return true;
+
+    if (!message.member) return false;
     // Administrator bypass
-    if (member.permissions.has('Administrator')) return true;
+    if (message.member.permissions.has('Administrator')) return true;
     // Specific role restriction
     const targetRoleId = '1470461508478566444';
-    return member.roles.cache.has(targetRoleId) || (discordConfig.adminRoleId && member.roles.cache.has(discordConfig.adminRoleId));
+    return message.member.roles.cache.has(targetRoleId) || (discordConfig.adminRoleId && message.member.roles.cache.has(discordConfig.adminRoleId));
 }
 
 // ===== BOT CONFIG =====
@@ -709,7 +714,7 @@ client.on('messageCreate', async (message) => {
     const command = args.shift().toLowerCase();
 
     // Global Permission Check
-    if (!checkPermission(message.member)) return;
+    if (!checkPermission(message)) return;
 
     // ===== !setup [logChannelId] [adminRoleId] =====
     if (command === 'setup') {
@@ -813,7 +818,7 @@ client.on('messageCreate', async (message) => {
 
     // ===== !pause =====
     else if (command === 'pause') {
-        if (!checkPermission(message.member)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You do not have the required role to pause the fleet.', 0xff4444)] });
+        if (!checkPermission(message)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You do not have the required role to pause the fleet.', 0xff4444)] });
         const isPaused = togglePause();
         message.reply({ embeds: [createEmbed(isPaused ? '⏸️ Fleet Paused' : '▶️ Fleet Resumed', `Status updated for **${workers.length}** worker(s).`)] });
         logCommand(message, 'pause', { Status: isPaused ? 'Paused' : 'Resumed' });
@@ -821,7 +826,7 @@ client.on('messageCreate', async (message) => {
 
     // ===== !settank [name or indices] =====
     else if (command === 'settank') {
-        if (!checkPermission(message.member)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
+        if (!checkPermission(message)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
         const tankInput = args.join(' ');
         if (!tankInput) return message.reply({ embeds: [createEmbed('❌ Usage', `\`${PREFIX}settank [name or indices]\` (e.g. Booster or 3 1 0)`, 0xff4444)] });
 
@@ -846,7 +851,7 @@ client.on('messageCreate', async (message) => {
 
     // ===== !setstats [0-9 values] =====
     else if (command === 'setstats') {
-        if (!checkPermission(message.member)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
+        if (!checkPermission(message)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
         const statsInput = args;
         if (statsInput.length === 0) return message.reply({ embeds: [createEmbed('❌ Usage', `\`${PREFIX}setstats 2 2 2 6 6 8 8 8 0\` (10 values)`, 0xff4444)] });
 
@@ -864,7 +869,7 @@ client.on('messageCreate', async (message) => {
 
     // ===== !setname [name] =====
     else if (command === 'setname') {
-        if (!checkPermission(message.member)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
+        if (!checkPermission(message)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
         const name = args.join(' ');
         if (!name) return message.reply({ embeds: [createEmbed('❌ Usage', `\`${PREFIX}setname [bot name]\``, 0xff4444)] });
         botConfig.name = name;
@@ -875,7 +880,7 @@ client.on('messageCreate', async (message) => {
 
     // ===== !setsquad [id] =====
     else if (command === 'setsquad') {
-        if (!checkPermission(message.member)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
+        if (!checkPermission(message)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
         const squadId = args[0];
         if (!squadId) return message.reply({ embeds: [createEmbed('❌ Usage', `\`${PREFIX}setsquad [id]\``, 0xff4444)] });
         botConfig.squadId = squadId;
@@ -886,7 +891,7 @@ client.on('messageCreate', async (message) => {
 
     // ===== !setpreset [preset name] =====
     else if (command === 'setpreset') {
-        if (!checkPermission(message.member)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
+        if (!checkPermission(message)) return message.reply({ embeds: [createEmbed('❌ No Permission', 'You need to be an admin or have the admin role to change settings.', 0xff4444)] });
         const presetName = args.join(' ');
         if (!presetName) {
             const presetList = Object.keys(PRESETS).map((p, i) => `**${i + 1}.** ${p}`).join('\n');
