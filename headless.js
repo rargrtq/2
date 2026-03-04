@@ -383,13 +383,14 @@ if (!process.env.IS_WORKER) {
       const worker = fork(__filename, [], { env: { ...process.env, IS_WORKER: 'true' } });
 
       worker.on('message', (msg) => {
-        if (msg.type === 'blacklisted') {
-          console.log(`[BOT ${config.id}] Proxy blacklisted/banned! Reason: "${msg.reason || 'Unknown'}" Rotating...`);
+        if (msg.type === 'blacklisted' || msg.type === 'proxy_failed') {
+          const reason = msg.type === 'blacklisted' ? `Blacklisted: ${msg.reason || 'Unknown'}` : 'Connection Failed/Timeout';
+          console.log(`[BOT ${config.id}] Proxy issue! (${reason}). Rotating...`);
           worker.kill();
           // Remove from workers list
           workers = workers.filter(w => w !== worker);
           // Relaunch with same spec but new proxy
-          setTimeout(() => launchBot(botSpec, index), 5000);
+          setTimeout(() => launchBot(botSpec, index), 2000); // Wait 2s before retry
         } else if (msg.type === 'verified_good') {
           if (msg.proxyUrl) {
             fs.appendFileSync('notblacklisted.txt', msg.proxyUrl + '\n', 'utf8');
@@ -1718,6 +1719,7 @@ if (!process.env.IS_WORKER) {
           let connectTimeout = setTimeout(() => {
             if (!isConnected && d.readyState !== 1) {
               console.log(`[BOT ${config.id}] Connection timed out (15s), terminating socket...`);
+              if (config.proxy) process.send({ type: 'proxy_failed', proxyUrl: config.proxy.url });
               d.terminate();
             }
           }, 15000);
@@ -1738,6 +1740,7 @@ if (!process.env.IS_WORKER) {
             isConnected = false;
             clearTimeout(connectTimeout);
             console.log(`[BOT ${config.id}] WebSocket Error:`, err.message || err);
+            if (config.proxy) process.send({ type: 'proxy_failed', proxyUrl: config.proxy.url });
           });
 
           d.addEventListener('message', (msg) => {

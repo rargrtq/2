@@ -28,7 +28,7 @@ const MAX_BOTS = parseInt(process.env.MAX_BOTS) || 999;
 
 if (!MASTER_URL) {
     console.error('[SATELLITE] ❌ MASTER_URL is not set. Add it as a Codespace secret.');
-    console.error('[SATELLITE]    Format: wss://<master-codespace-name>-3000.preview.app.github.dev');
+    console.error('[SATELLITE]    Format: wss://<master-codespace-name>-3000.app.github.dev');
     process.exit(1);
 }
 
@@ -44,11 +44,59 @@ const { tree, getPath, indicesToKeys, convertStats } = require('./shared');
 // ── State ─────────────────────────────────────────────────────────────────────
 let workers = [];
 let masterSocket = null;
+let proxies = {};
+
+// ── Proxy Handling (Satellite side) ───────────────────────────────────────────
+function loadProxies() {
+    try {
+        const filePath = path.join(__dirname, 'proxies.txt');
+        if (!fs.existsSync(filePath)) return;
+        const data = fs.readFileSync(filePath, 'utf8');
+        const lines = data.split('\n').filter(l => l.trim().length > 0);
+        let allFound = 0;
+        for (const line of lines) {
+            allFound++;
+            const raw = line.trim();
+            let proxyUrl = '', type = 'http';
+            const protocolMatch = raw.match(/^(socks[45h]*|https?):\/\//i);
+            const protocol = protocolMatch ? protocolMatch[1].toLowerCase() : 'http';
+            const cleanRaw = protocolMatch ? raw.substring(protocolMatch[0].length) : raw;
+            const parts = cleanRaw.split(':');
+
+            if (parts.length === 4) {
+                const [host, port, user, pass] = parts;
+                proxyUrl = `${protocol}://${user}:${pass}@${host}:${port}`;
+                type = protocol.startsWith('socks') ? 'socks' : 'http';
+            } else if (parts.length === 2) {
+                const [host, port] = parts;
+                proxyUrl = `${protocol}://${host}:${port}`;
+                type = protocol.startsWith('socks') ? 'socks' : 'http';
+            }
+            if (proxyUrl) proxies[proxyUrl] = type;
+        }
+        console.log(`[SATELLITE] Loaded ${allFound} proxies.`);
+    } catch (e) {
+        console.log('[SATELLITE] Error loading proxies.txt:', e.message);
+    }
+}
+
+function getFreshProxy() {
+    const keys = Object.keys(proxies);
+    if (keys.length === 0) return null;
+    const url = keys[0];
+    const type = proxies[url];
+    if (keys.length > 1) {
+        delete proxies[url];
+    }
+    return { url, type };
+}
+
+loadProxies();
 
 // ── Bot Spawning ──────────────────────────────────────────────────────────────
 function launchBots(count, spawnConfig) {
     const followUrl = spawnConfig.followServerUrl;
-    const launchDelay = spawnConfig.launchDelay || 5000;
+    const launchDelay = spawnConfig.launchDelay || 2000;
     const botIdBase = Date.now() % 100000;
     const launchQueue = [];
 
@@ -58,8 +106,8 @@ function launchBots(count, spawnConfig) {
         for (let i = 0; i < count; i++) {
             const entry = preset[i % preset.length];
             launchQueue.push({
-                tank: indicesToKeys(entry.tanks),
-                stats: convertStats(entry.stats),
+                tank: entry.tanks ? indicesToKeys(entry.tanks) : spawnConfig.tank,
+                stats: entry.stats ? convertStats(entry.stats) : (spawnConfig.stats || [2, 2, 2, 6, 6, 8, 8, 8, 0]),
                 keys: [],
                 autospin: entry.autospin || false,
                 growth_order: entry.growth_extended_upgrades_order_to_max || [],
@@ -68,73 +116,82 @@ function launchBots(count, spawnConfig) {
         }
     } else {
         for (let i = 0; i < count; i++) {
-            let tankVal = spawnConfig.tank || 'Booster';
-            if (/^[\d\s]+$/.test(tankVal)) {
-                tankVal = indicesToKeys(tankVal);
-            } else {
-                tankVal = getPath(tankVal, tree);
-            }
             launchQueue.push({
-                tank: tankVal,
-                stats: spawnConfig.stats || [2, 2, 2, 6, 6, 8, 8, 8, 0, 0],
-                keys: [],
-                autospin: false,
+                tank: spawnConfig.tank,
+                stats: spawnConfig.stats,
+                keys: spawnConfig.keys || [],
+                autospin: spawnConfig.autospin || false,
                 growth_order: [],
                 angle_offset: 0
             });
         }
     }
 
-    launchQueue.forEach((botSpec, i) => {
-        setTimeout(() => {
-            const config = {
-                id: botIdBase + i,
-                proxy: false,
-                hash: '#' + (spawnConfig.squadId || 'epb'),
-                name: spawnConfig.name || '[SAT]',
-                stats: botSpec.stats,
-                type: spawnConfig.type || 'follow',
-                token: 'follow-3c8f2e',
-                autoFire: spawnConfig.autoFire || false,
-                autoRespawn: spawnConfig.autoRespawn !== false,
-                target: spawnConfig.target || 'player',
-                aim: spawnConfig.aim || 'drone',
-                keys: [...(botSpec.keys || [])],
-                joinSequence: [],
-                tank: botSpec.tank,
-                chatSpam: spawnConfig.chatSpam || '',
-                squadId: spawnConfig.squadId || 'epb',
-                loadFromCache: true,
-                cache: false,
-                arrasCache: path.join(__dirname, 'ah.txt'),
-                autospin: botSpec.autospin,
-                growth_order: botSpec.growth_order,
-                angle_offset: botSpec.angle_offset,
-                pathfinding: false
-            };
+    function launchBotInstance(botSpec, i, botIdBase) {
+        const nextProxy = getFreshProxy();
+        const config = {
+            id: botIdBase + i,
+            proxy: nextProxy ? { type: nextProxy.type, url: nextProxy.url } : false,
+            hash: '#' + (spawnConfig.squadId || 'epb'),
+            name: spawnConfig.name || '[SAT]',
+            stats: botSpec.stats,
+            type: spawnConfig.type || 'follow',
+            token: 'follow-3c8f2e',
+            autoFire: spawnConfig.autoFire || false,
+            autoRespawn: spawnConfig.autoRespawn !== false,
+            target: spawnConfig.target || 'player',
+            aim: spawnConfig.aim || 'drone',
+            keys: [...(botSpec.keys || [])],
+            joinSequence: [],
+            tank: botSpec.tank,
+            chatSpam: spawnConfig.chatSpam || '',
+            squadId: spawnConfig.squadId || 'epb',
+            loadFromCache: true,
+            cache: false,
+            arrasCache: path.join(__dirname, 'ah.txt'),
+            autospin: botSpec.autospin,
+            growth_order: botSpec.growth_order,
+            angle_offset: botSpec.angle_offset,
+            pathfinding: false
+        };
 
-            const workerProcess = fork(path.join(__dirname, 'headless.js'), [], {
-                env: {
-                    ...process.env,
-                    IS_WORKER: 'true',
-                    FOLLOW_SERVER_URL: followUrl  // connect directly to master
-                },
-                execArgv: ['--max-old-space-size=128'],
-                silent: false
-            });
+        const workerProcess = fork(path.join(__dirname, 'headless.js'), [], {
+            env: {
+                ...process.env,
+                IS_WORKER: 'true',
+                FOLLOW_SERVER_URL: followUrl
+            },
+            execArgv: ['--max-old-space-size=128'],
+            silent: false
+        });
 
-            const entry = { process: workerProcess, id: config.id };
-            workers.push(entry);
+        const entry = { process: workerProcess, id: config.id };
+        workers.push(entry);
 
-            workerProcess.on('exit', () => {
-                workers = workers.filter(w => w !== entry);
-                sendStatus();
-            });
+        workerProcess.on('message', (msg) => {
+            if (msg.type === 'blacklisted' || msg.type === 'proxy_failed') {
+                const reason = msg.type === 'blacklisted' ? `Blacklisted: ${msg.reason || 'Unknown'}` : 'Connection Failed/Timeout';
+                console.log(`[SAT-BOT ${config.id}] Proxy issue! (${reason}). Rotating...`);
+                workerProcess.kill();
+                setTimeout(() => {
+                    workers = workers.filter(w => w !== entry);
+                    launchBotInstance(botSpec, i, botIdBase);
+                }, 2000);
+            }
+        });
 
-            workerProcess.send({ type: 'start', config });
-            console.log(`[SATELLITE] Bot #${config.id} launched (${botSpec.tank}). Total: ${workers.length}`);
+        workerProcess.on('exit', () => {
+            workers = workers.filter(w => w !== entry);
             sendStatus();
-        }, launchDelay * i);
+        });
+
+        workerProcess.send({ type: 'start', config });
+        console.log(`[SATELLITE] Bot #${config.id} launched (${botSpec.tank}). Total: ${workers.length}`);
+        sendStatus();
+    }
+
+    launchQueue.forEach((botSpec, i) => {
+        setTimeout(() => launchBotInstance(botSpec, i, botIdBase), launchDelay * i);
     });
 
     console.log(`[SATELLITE] Queued ${count} bot(s) with ${launchDelay}ms delay each.`);

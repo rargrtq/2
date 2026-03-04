@@ -536,7 +536,7 @@ function startBots(numBots, message, type = 'follow') {
         }
     }
 
-    launchQueue.forEach((botSpec, i) => {
+    function launchBotInstance(botSpec, i, type, botIdCounter) {
         const nextProxy = getFreshProxy();
         const config = {
             id: botIdCounter + i,
@@ -574,8 +574,14 @@ function startBots(numBots, message, type = 'follow') {
         workers.push(workerEntry);
 
         workerProcess.on('message', (msg) => {
-            if (msg.type === 'blacklisted') {
-                console.log(`[BOT ${msg.id}] Proxy blacklisted! Reason: "${msg.reason || 'Unknown'}". Rotating...`);
+            if (msg.type === 'blacklisted' || msg.type === 'proxy_failed') {
+                const reason = msg.type === 'blacklisted' ? `Blacklisted: ${msg.reason || 'Unknown'}` : 'Connection Failed/Timeout';
+                console.log(`[BOT ${config.id}] Proxy issue! (${reason}). Rotating...`);
+                workerProcess.kill();
+                setTimeout(() => {
+                    workers = workers.filter(w => w !== workerEntry);
+                    launchBotInstance(botSpec, i, type, botIdCounter);
+                }, 2000);
             } else if (msg.type === 'verified_good') {
                 if (msg.proxyUrl) {
                     fs.appendFileSync(path.join(__dirname, 'notblacklisted.txt'), msg.proxyUrl + '\n', 'utf8');
@@ -630,20 +636,17 @@ function startBots(numBots, message, type = 'follow') {
             workers = workers.filter(w => w !== workerEntry);
         });
 
-        setTimeout(() => {
-            console.log(`[BOT ${config.id}] Launching ${botSpec.tank} using ${config.proxy ? 'proxy' : 'direct'}...`);
-            workerProcess.send({ type: 'start', config: config });
-            if (config.proxy && config.proxy.url) {
-                usedProxies.add(config.proxy.url);
-                saveProxyUsage();
-            }
-        }, botConfig.launchDelay * i);
+        workerProcess.send({ type: 'start', config });
+    }
+
+    launchQueue.forEach((botSpec, i) => {
+        setTimeout(() => launchBotInstance(botSpec, i, type, botIdCounter), botConfig.launchDelay * i);
     });
 
     if (message) {
         const totalTime = botConfig.launchDelay * numBots;
         setTimeout(() => {
-            // Disabled: message.channel.send(`All ${numBots} bots launched.`);
+            // All bots launched (initial queue)
         }, totalTime + 1000);
     }
 }
