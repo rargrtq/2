@@ -142,7 +142,7 @@ function launchBots(count, spawnConfig) {
             id: botIdBase + i,
             proxy: nextProxy ? { type: nextProxy.type, url: nextProxy.url } : false,
             hash: '#' + (spawnConfig.squadId || 'epb'),
-            name: spawnConfig.name || '[SAT]',
+            name: spawnConfig.name || 'bot',
             stats: botSpec.stats,
             type: spawnConfig.type || 'follow',
             token: 'follow-3c8f2e',
