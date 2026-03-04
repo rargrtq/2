@@ -826,7 +826,8 @@ if (!process.env.IS_WORKER) {
         },
         "followRedirects": true,
         "origin": "https://arras.io",
-        "localAddress": 0
+        "localAddress": 0,
+        "rejectUnauthorized": false
       })
       socket.binaryType = 'arraybuffer'
       socket.addEventListener('open', function () {
@@ -1707,7 +1708,8 @@ if (!process.env.IS_WORKER) {
               'Sec-WebSocket-Protocol': b[1] ? b[1].join(', ') : '', 'host': host
             },
             followRedirects: true, origin: 'https://arras.io',
-            handshakeTimeout: 15000
+            handshakeTimeout: 15000,
+            rejectUnauthorized: false
           };
           if (proxyAgent) h.agent = proxyAgent;
           const d = Reflect.construct(a, [fullUrl, b[1], h], c);

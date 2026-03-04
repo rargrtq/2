@@ -158,7 +158,7 @@ function sendStatus() {
 
 function connectToMaster() {
     console.log(`[SATELLITE] Connecting to master...`);
-    masterSocket = new WebSocket(MASTER_URL);
+    masterSocket = new WebSocket(MASTER_URL, { rejectUnauthorized: false });
 
     masterSocket.on('open', () => {
         console.log(`[SATELLITE] ✅ Connected to master!`);
