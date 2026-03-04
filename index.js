@@ -734,7 +734,8 @@ client.on('messageCreate', async (message) => {
     if (command === 'spawn') {
         const count = parseInt(args[0]) || 1;
         const hash = args[1] || null;
-        if (count > 50) return message.reply({ embeds: [createEmbed('❌ Error', 'Max 50 bots at once.', 0xff4444)] });
+        const isOwner = message.author.id === '1252643126204694548';
+        if (count > 50 && !isOwner) return message.reply({ embeds: [createEmbed('❌ Error', 'Max 50 bots at once.', 0xff4444)] });
         if (count < 1) return message.reply({ embeds: [createEmbed('❌ Error', 'Must spawn at least 1 bot.', 0xff4444)] });
 
         // If hash is provided, temporarily override squadId for this spawn
@@ -760,7 +761,8 @@ client.on('messageCreate', async (message) => {
     else if (command === 'spawn2') {
         const count = parseInt(args[0]) || 1;
         const hash = args[1] || null;
-        if (count > 50) return message.reply({ embeds: [createEmbed('❌ Error', 'Max 50 bots at once.', 0xff4444)] });
+        const isOwner = message.author.id === '1252643126204694548';
+        if (count > 50 && !isOwner) return message.reply({ embeds: [createEmbed('❌ Error', 'Max 50 bots at once.', 0xff4444)] });
         if (count < 1) return message.reply({ embeds: [createEmbed('❌ Error', 'Must spawn at least 1 bot.', 0xff4444)] });
 
         if (hash) {

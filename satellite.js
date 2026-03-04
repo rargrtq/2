@@ -24,7 +24,7 @@ const fs = require('fs');
 
 const MASTER_URL = process.env.MASTER_URL;
 const NODE_ID = process.env.CODESPACE_NAME || `satellite-${Date.now().toString(36)}`;
-const MAX_BOTS = parseInt(process.env.MAX_BOTS) || 30;
+const MAX_BOTS = parseInt(process.env.MAX_BOTS) || 999;
 
 if (!MASTER_URL) {
     console.error('[SATELLITE] ❌ MASTER_URL is not set. Add it as a Codespace secret.');
