@@ -1363,8 +1363,8 @@ if (!process.env.IS_WORKER) {
                   target[2] = data[2] / 10;
                   target[3] = data[3] / 10;
                   target[4] = data[4];
-                  active = 5;
-                  lastRecieve = performance.now();
+                  active = 25;
+                  lastRecieve = Date.now();
                 }
                 break;
               }
@@ -1444,10 +1444,14 @@ if (!process.env.IS_WORKER) {
         if (block || isPaused) return;
         if (a) {
           switch (i) {
-            case 1: {
-              setValue(config.name);
+            case 1:
+            case 2:
+            case 5:
+            case 10:
+            case 20: {
+              setValue(config.name || 'bot');
               controller.click(250, 190);
-              log('Play button clicked!', config.name, window.location.hash);
+              if (i === 1) log('Play button clicked!', config.name || 'bot', window.location.hash);
               break;
             }
           }
@@ -1527,11 +1531,12 @@ if (!process.env.IS_WORKER) {
 
                 // Attempt pathfinding if enabled and map exists
                 if (config.pathfinding && mazeManager.map && roomParser.room_dimensions.length > 0) {
-                  if (performance.now() - lastPathUpdate > 500) {
+                  const now = Date.now();
+                  if (now - lastPathUpdate > 500) {
                     const startNode = mazeManager.parse_position_coordinate(position[0], position[1], roomParser.room_dimensions);
                     const endNode = mazeManager.parse_position_coordinate(target[0], target[1], roomParser.room_dimensions);
                     targetPath = mazeManager.find_path(startNode, endNode, playerColor);
-                    lastPathUpdate = performance.now();
+                    lastPathUpdate = now;
                   }
 
                   if (targetPath.length > 0) {
