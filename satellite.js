@@ -162,6 +162,7 @@ function launchBots(count, spawnConfig) {
             growth_order: botSpec.growth_order,
             angle_offset: botSpec.angle_offset,
             pathfinding: spawnConfig.pathfinding || false,
+            syncWait: spawnConfig.syncWait || false,
             cachedResources: spawnConfig.cachedResources || null
         };
 
@@ -267,6 +268,14 @@ function connectToMaster() {
                 case 25: {
                     // Config update (for future use)
                     console.log(`[SATELLITE] 📥 Config update received`);
+                    break;
+                }
+                case 26: {
+                    // Global press play
+                    console.log(`[SATELLITE] 🎇 Sync WAIT over, pressing play for all bots!`);
+                    workers.forEach(w => {
+                        try { w.process.send({ type: 'press_play' }); } catch (e) { }
+                    });
                     break;
                 }
             }

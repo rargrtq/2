@@ -1422,14 +1422,24 @@ if (!process.env.IS_WORKER) {
             for (let u = 0; u < arr[i]; u++) { controller.press(code); }
           }
         }
-      }, statusRecieved = false, status = [], firstJoin = false, hasJoined = false, timeouts = {}, timeout = function (f, t) {
-        if (!(t >= 1)) { t = 1 }; let n = i + t, at = timeouts[n] || (timeouts[n] = []); at.push(f);
-      }, block = false, idleKeys = false, idleIndex = -1;
+      }, statusRecieved = false, status = [], firstJoin = false, hasJoined = false,
+        playCommandReceived = false, signaledReady = false,
+        timeouts = {}, timeout = function (f, t) {
+          if (!(t >= 1)) { t = 1 }; let n = i + t, at = timeouts[n] || (timeouts[n] = []); at.push(f);
+        }, block = false, idleKeys = false, idleIndex = -1;
       let idleAngle = 0, cIdleAngle = 0;
 
       const mainInterval = setInterval(function () {
         if (block || isPaused) return;
         if (a) {
+          if (config.syncWait && !playCommandReceived) {
+            if (i >= 1 && !signaledReady) {
+              process.send({ type: 'ready_to_play', id: config.id });
+              signaledReady = true;
+            }
+            return;
+          }
+
           switch (i) {
             case 1:
             case 2:
@@ -1812,6 +1822,8 @@ if (!process.env.IS_WORKER) {
       arrasInstance.then(function () {
         currentBot = arrasInstance.create(config);
       });
+    } else if (message.type === 'press_play') {
+      playCommandReceived = true;
     } else if (message.type === 'pause') {
       isPaused = message.paused;
       if (currentBot && currentBot.log) currentBot.log(`Bot state is now: ${isPaused ? 'PAUSED' : 'RESUMED'}`);
