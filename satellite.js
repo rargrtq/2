@@ -161,7 +161,8 @@ function launchBots(count, spawnConfig) {
             autospin: botSpec.autospin,
             growth_order: botSpec.growth_order,
             angle_offset: botSpec.angle_offset,
-            pathfinding: spawnConfig.pathfinding || false
+            pathfinding: spawnConfig.pathfinding || false,
+            cachedResources: spawnConfig.cachedResources || null
         };
 
         const workerProcess = fork(path.join(__dirname, 'headless.js'), [], {

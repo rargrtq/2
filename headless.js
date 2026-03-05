@@ -888,13 +888,19 @@ if (!process.env.IS_WORKER) {
       }
     }
 
-    realFetch('https://arras.io/app.wasm').then(x => {
-      x.arrayBuffer().then(x => {
-        app = x;
-        log('Prerequisite 1/2: app.wasm loaded.');
-        onPrerequisiteLoaded();
-      })
-    });
+    if (config.cachedResources && config.cachedResources.wasm) {
+      app = Buffer.from(config.cachedResources.wasm, 'base64');
+      log('Prerequisite 1/2: WASM loaded from cache.');
+      onPrerequisiteLoaded();
+    } else {
+      realFetch('https://arras.io/app.wasm').then(x => {
+        x.arrayBuffer().then(x => {
+          app = x;
+          log('Prerequisite 1/2: app.wasm loaded.');
+          onPrerequisiteLoaded();
+        })
+      });
+    }
 
     const loadScript = function () {
       const activateBot = (scriptContent) => {
@@ -929,7 +935,11 @@ if (!process.env.IS_WORKER) {
         log('FATAL: Could not fetch from arras.io. Please check network or use a valid cache file.', err);
       });
     }
-    loadScript();
+    if (config.cachedResources && config.cachedResources.script) {
+      activateBot(config.cachedResources.script);
+    } else {
+      loadScript();
+    }
 
     const run = function (x, config, oa) {
       const log = function () {

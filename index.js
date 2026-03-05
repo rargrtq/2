@@ -404,6 +404,28 @@ function killAllNodes() {
     });
 }
 
+// Resource Cache for Rocket Launch
+let cachedResources = { wasm: null, script: null };
+async function preloadResources() {
+    console.log('[RESOURCES] Pre-loading Arras.io game files for Rocket Launch...');
+    try {
+        const fetch = (await import('node-fetch')).default;
+        const res = await fetch('https://arras.io');
+        const html = await res.text();
+        const scriptTagStart = html.indexOf('<script>');
+        let scriptContent = html.slice(scriptTagStart + 8);
+        const scriptTagEnd = scriptContent.indexOf('</script');
+        cachedResources.script = scriptContent.slice(0, scriptTagEnd);
+
+        const wasmRes = await fetch('https://arras.io/app.wasm');
+        cachedResources.wasm = Buffer.from(await wasmRes.arrayBuffer());
+        console.log('[RESOURCES] ✅ WASM and Script cached. Ready for instant burst.');
+    } catch (e) {
+        console.error('[RESOURCES] Failed to cache resources, bots will fetch individually:', e.message);
+    }
+}
+preloadResources();
+
 // Build spawn config object to send to satellite nodes
 function buildSpawnConfig(type) {
     let presetData = null;
@@ -427,7 +449,11 @@ function buildSpawnConfig(type) {
         type: type || 'follow',
         followServerUrl: MASTER_PUBLIC_URL,
         joinSequence: botConfig.joinSequence,
-        pathfinding: botConfig.pathfinding
+        pathfinding: botConfig.pathfinding,
+        cachedResources: {
+            script: cachedResources.script,
+            wasm: cachedResources.wasm ? cachedResources.wasm.toString('base64') : null
+        }
     };
 }
 
@@ -563,7 +589,11 @@ function startBots(numBots, message, type = 'follow') {
             autospin: botSpec.autospin,
             growth_order: botSpec.growth_order,
             angle_offset: botSpec.angle_offset,
-            pathfinding: botConfig.pathfinding
+            pathfinding: botConfig.pathfinding,
+            cachedResources: {
+                script: cachedResources.script,
+                wasm: cachedResources.wasm ? cachedResources.wasm.toString('base64') : null
+            }
         };
 
         const workerProcess = fork(path.join(__dirname, 'headless.js'), [], {
