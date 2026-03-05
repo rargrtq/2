@@ -1430,6 +1430,13 @@ if (!process.env.IS_WORKER) {
       const mainInterval = setInterval(function () {
         if (block || isPaused) return;
         if (a) {
+          if (i === 1 && config.targetTime && config.targetTime > 0) {
+            if (!config._jitter) config._jitter = Math.random() * 800;
+            if (Date.now() < config.targetTime + config._jitter) {
+              return; // Wait until target time + random jitter is reached
+            }
+          }
+
           switch (i) {
             case 1:
             case 2:

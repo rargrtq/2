@@ -427,7 +427,7 @@ async function preloadResources() {
 preloadResources();
 
 // Build spawn config object to send to satellite nodes
-function buildSpawnConfig(type) {
+function buildSpawnConfig(type, baseTargetTime) {
     let presetData = null;
     if (botConfig.tankMode === 'preset' && PRESETS[botConfig.activePreset]) {
         presetData = PRESETS[botConfig.activePreset];
@@ -450,6 +450,7 @@ function buildSpawnConfig(type) {
         followServerUrl: MASTER_PUBLIC_URL,
         joinSequence: botConfig.joinSequence,
         pathfinding: botConfig.pathfinding,
+        targetTime: baseTargetTime || 0,
         cachedResources: {
             script: cachedResources.script,
             wasm: cachedResources.wasm ? cachedResources.wasm.toString('base64') : null
@@ -462,7 +463,8 @@ function distributeStartBots(totalCount, message, type) {
     const onlineNodes = Array.from(nodes.values()).filter(n => n.ws.readyState === 1);
     if (onlineNodes.length === 0) {
         // No satellites online — run everything locally (backward compatible)
-        startBots(totalCount, message, type);
+        const localTargetTime = Date.now() + 4000 + (totalCount * (botConfig.launchDelay || 20));
+        startBots(totalCount, message, type, localTargetTime);
         return;
     }
 
@@ -471,7 +473,10 @@ function distributeStartBots(totalCount, message, type) {
     const remainder = totalCount % totalNodes;
     const masterCount = baseCount + remainder; // master gets the extra from uneven split
 
-    const spawnConfig = buildSpawnConfig(type);
+    // Target a consistent time in the future for all nodes to click "play" simultaneously
+    // base delay of 4 seconds so they have enough time to connect + the staggering delay
+    const sharedTargetTime = Date.now() + 4000 + (totalCount * (botConfig.launchDelay || 20));
+    const spawnConfig = buildSpawnConfig(type, sharedTargetTime);
 
     // Each satellite's share - Done FIRST to account for network latency
     const nodeLines = [];
@@ -486,7 +491,7 @@ function distributeStartBots(totalCount, message, type) {
     });
 
     // Master's local share - Done AFTER sending satellite commands
-    if (masterCount > 0) startBots(masterCount, null, type);
+    if (masterCount > 0) startBots(masterCount, null, type, sharedTargetTime);
 
     if (message) {
         const desc = [
@@ -509,7 +514,7 @@ let spawn3Results = new Map(); // hash -> data
 let spawn3Timeout = null;
 let spawn3Message = null;
 
-function startBots(numBots, message, type = 'follow') {
+function startBots(numBots, message, type = 'follow', targetTime = 0) {
     let launchQueue = [];
     const proxyList = Object.keys(proxies);
     const botIdCounter = Date.now() % 10000;
@@ -590,6 +595,7 @@ function startBots(numBots, message, type = 'follow') {
             growth_order: botSpec.growth_order,
             angle_offset: botSpec.angle_offset,
             pathfinding: botConfig.pathfinding,
+            targetTime: targetTime,
             cachedResources: {
                 script: cachedResources.script,
                 wasm: cachedResources.wasm ? cachedResources.wasm.toString('base64') : null

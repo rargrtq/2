@@ -162,6 +162,7 @@ function launchBots(count, spawnConfig) {
             growth_order: botSpec.growth_order,
             angle_offset: botSpec.angle_offset,
             pathfinding: spawnConfig.pathfinding || false,
+            targetTime: spawnConfig.targetTime || 0,
             cachedResources: spawnConfig.cachedResources || null
         };
 
