@@ -23,8 +23,7 @@
     0,
     0
   ],
-  "launchDelay": 0,
-  "syncWait": true,
+  "launchDelay": 20,
   "pathfinding": false,
   "region": "eps",
   "nameMode": "fixed",

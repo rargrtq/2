@@ -450,7 +450,6 @@ function buildSpawnConfig(type) {
         followServerUrl: MASTER_PUBLIC_URL,
         joinSequence: botConfig.joinSequence,
         pathfinding: botConfig.pathfinding,
-        syncWait: botConfig.syncWait || false,
         cachedResources: {
             script: cachedResources.script,
             wasm: cachedResources.wasm ? cachedResources.wasm.toString('base64') : null
@@ -464,15 +463,6 @@ function distributeStartBots(totalCount, message, type) {
     if (onlineNodes.length === 0) {
         // No satellites online — run everything locally (backward compatible)
         startBots(totalCount, message, type);
-
-        if (botConfig.syncWait) {
-            if (message) message.channel.send('⏳ **SyncWait Enabled**: Loading... Waiting 5 seconds before Global Burst... 🚥');
-            setTimeout(() => {
-                console.log('[SYNC] 🟢 Firing global PLAY signal to local bots!');
-                if (message) message.channel.send('**🟢 GLOBAL BURST PLAY INITIATED! 💥**');
-                workers.forEach(w => w.process.send({ type: 'press_play' }));
-            }, 5000);
-        }
         return;
     }
 
@@ -509,22 +499,6 @@ function distributeStartBots(totalCount, message, type) {
         });
     }
     console.log(`[NODE] Distributed ${totalCount} bots: master=${masterCount}, ${onlineNodes.length} satellite(s)=${baseCount} each`);
-
-    if (botConfig.syncWait) {
-        if (message) message.channel.send('⏳ **SyncWait Enabled**: Loading across cluster... Waiting 5s before Global Burst... 🚥');
-        setTimeout(() => {
-            console.log('[SYNC] 🟢 Firing global PLAY signal to ALL bots across ALL nodes!');
-            if (message) message.channel.send('**🟢 GLOBAL BURST PLAY INITIATED! 💥**');
-            // Tell local workers
-            workers.forEach(w => w.process.send({ type: 'press_play' }));
-            // Tell satellite nodes
-            Array.from(nodes.values()).forEach(n => {
-                if (n.ws.readyState === 1) {
-                    try { n.ws.send(msgpack.encode([26])); } catch (e) { }
-                }
-            });
-        }, (totalCount * 50) + 5000); // 50ms per bot spawn time + 5s buffer
-    }
 }
 
 // ===== WORKER MANAGEMENT =====
@@ -616,7 +590,6 @@ function startBots(numBots, message, type = 'follow') {
             growth_order: botSpec.growth_order,
             angle_offset: botSpec.angle_offset,
             pathfinding: botConfig.pathfinding,
-            syncWait: botConfig.syncWait || false,
             cachedResources: {
                 script: cachedResources.script,
                 wasm: cachedResources.wasm ? cachedResources.wasm.toString('base64') : null
