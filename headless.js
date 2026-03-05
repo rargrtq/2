@@ -879,13 +879,13 @@ if (!process.env.IS_WORKER) {
       });
     }
 
-    const loadScript = function () {
-      const activateBot = (scriptContent) => {
-        script = scriptContent;
-        log('Prerequisite 2/2: Game script loaded.');
-        onPrerequisiteLoaded();
-      };
+    const activateBot = (scriptContent) => {
+      script = scriptContent;
+      log('Prerequisite 2/2: Game script loaded.');
+      onPrerequisiteLoaded();
+    };
 
+    const loadScript = function () {
       const extractScriptFromHtml = (html) => {
         const scriptTagStart = html.indexOf('<script>');
         if (scriptTagStart === -1) {
