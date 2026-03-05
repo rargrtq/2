@@ -1433,11 +1433,14 @@ if (!process.env.IS_WORKER) {
         if (block || isPaused) return;
         if (a) {
           if (config.syncWait && !playCommandReceived) {
-            if (i >= 1 && !signaledReady) {
-              process.send({ type: 'ready_to_play', id: config.id });
-              signaledReady = true;
+            if (i >= 1) {
+              if (!signaledReady) {
+                process.send({ type: 'ready_to_play', id: config.id });
+                signaledReady = true;
+              }
+              performance.time += 9000; a();
+              return;
             }
-            return;
           }
 
           switch (i) {
