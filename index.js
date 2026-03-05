@@ -419,7 +419,7 @@ async function preloadResources() {
 
         const wasmRes = await fetch('https://arras.io/app.wasm');
         cachedResources.wasm = Buffer.from(await wasmRes.arrayBuffer());
-        console.log('[RESOURCES] ✅ WASM and Script cached. Ready for instant burst.');
+        console.log('[RESOURCES] ✅ WASM and Script cached. Ready.');
     } catch (e) {
         console.error('[RESOURCES] Failed to cache resources, bots will fetch individually:', e.message);
     }
