@@ -19,6 +19,16 @@
             "name": "urban-waffle-q7r9j6qvjjv9f65rx",
             "maxBots": 999,
             "account": null
+        },
+        {
+            "name": "ominous-tribble-g4gqv79gj654hw7v4",
+            "maxBots": 999,
+            "account": "acc3"
+        },
+        {
+            "name": "ubiquitous-giggle-r4jg5p9jqqw7h5jx9",
+            "maxBots": 999,
+            "account": "acc3"
         }
     ]
 }
