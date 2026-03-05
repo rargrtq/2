@@ -199,8 +199,13 @@ function launchBots(count, spawnConfig) {
         sendStatus();
     }
 
+    const delay = launchDelay || 0;
     launchQueue.forEach((botSpec, i) => {
-        setTimeout(() => launchBotInstance(botSpec, i, botIdBase), launchDelay * i);
+        if (delay <= 0) {
+            launchBotInstance(botSpec, i, botIdBase);
+        } else {
+            setTimeout(() => launchBotInstance(botSpec, i, botIdBase), delay * i);
+        }
     });
 
     console.log(`[SATELLITE] Queued ${count} bot(s) with ${launchDelay}ms delay each.`);

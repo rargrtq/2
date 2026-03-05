@@ -447,10 +447,7 @@ function distributeStartBots(totalCount, message, type) {
 
     const spawnConfig = buildSpawnConfig(type);
 
-    // Master's local share
-    if (masterCount > 0) startBots(masterCount, null, type);
-
-    // Each satellite's share
+    // Each satellite's share - Done FIRST to account for network latency
     const nodeLines = [];
     onlineNodes.forEach(node => {
         if (baseCount <= 0) return;
@@ -461,6 +458,9 @@ function distributeStartBots(totalCount, message, type) {
             console.error(`[NODE] Failed to send spawn to ${node.nodeId}:`, e.message);
         }
     });
+
+    // Master's local share - Done AFTER sending satellite commands
+    if (masterCount > 0) startBots(masterCount, null, type);
 
     if (message) {
         const desc = [
@@ -641,8 +641,13 @@ function startBots(numBots, message, type = 'follow') {
         workerProcess.send({ type: 'start', config });
     }
 
+    const delay = botConfig.launchDelay || 0;
     launchQueue.forEach((botSpec, i) => {
-        setTimeout(() => launchBotInstance(botSpec, i, type, botIdCounter), botConfig.launchDelay * i);
+        if (delay <= 0) {
+            launchBotInstance(botSpec, i, type, botIdCounter);
+        } else {
+            setTimeout(() => launchBotInstance(botSpec, i, type, botIdCounter), delay * i);
+        }
     });
 
     if (message) {
