@@ -1512,10 +1512,7 @@ if (!process.env.IS_WORKER) {
               }
               upgrade = false;
             }
-            if (socket && socket.readyState === 1 && statusRecieved && !subscribedToLeader && config.squadId) {
-              log(`Subscribing to leader using Squad ID: ${config.squadId}`);
-              send([10, config.squadId]); subscribedToLeader = true;
-            }
+
             active--;
             if (i % 175 === 174 && config.chatSpam) controller.chat(config.chatSpam);
 
