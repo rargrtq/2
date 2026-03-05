@@ -1,17 +1,7 @@
 {
     "satellites": [
         {
-            "name": "urban-waffle-q7r9j6qvjjv9f65rx",
-            "maxBots": 999,
-            "account": null
-        },
-        {
-            "name": "super-fishstick-v64g9wvp9jvxfwrrp",
-            "maxBots": 999,
-            "account": null
-        },
-        {
-            "name": "literate-broccoli-g47px4gj9rw5hvwqp",
+            "name": "literate-computing-machine-pjvvv9569j74c99g5",
             "maxBots": 999,
             "account": null
         },
