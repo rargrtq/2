@@ -523,7 +523,7 @@ function distributeStartBots(totalCount, message, type) {
                     try { n.ws.send(msgpack.encode([26])); } catch (e) { }
                 }
             });
-        }, 5000);
+        }, (totalCount * 50) + 5000); // 50ms per bot spawn time + 5s buffer
     }
 }
 
