@@ -762,31 +762,8 @@ if (!process.env.IS_WORKER) {
   });
   let isPaused = false;
   let currentBot = null;
+  let arrasInstance = null;
 
-  process.on('message', (message) => {
-    if (message.type === 'start') {
-      const config = message.config;
-      options.token = config.token;
-      options.loadFromCache = config.loadFromCache;
-      options.cache = config.cache;
-      options.arrasCache = config.arrasCache;
-
-      arras.then(function () {
-        currentBot = arras.create(config);
-      });
-    } else if (message.type === 'pause') {
-      isPaused = message.paused;
-      if (currentBot && currentBot.log) currentBot.log(`Bot state is now: ${isPaused ? 'PAUSED' : 'RESUMED'}`);
-    } else if (message.type === 'key_command') {
-      const { key } = message;
-      if (currentBot && currentBot.simulateKey) currentBot.simulateKey(key);
-    } else if (message.type === 'pathfinding') {
-      if (currentBot) currentBot.config.pathfinding = message.enabled;
-    } else if (message.type === 'stop_bot') {
-      if (currentBot && currentBot.destroy) currentBot.destroy();
-      process.exit();
-    }
-  });
 
   const options = { start: () => { } };
 
@@ -804,7 +781,7 @@ if (!process.env.IS_WORKER) {
   }
 
   WebAssembly.instantiateStreaming = false
-  const arras = (function () {
+  const initializeArras = function (config) {
     const log = function () {
       const logger = global.console || console;
       if (logger && logger.log) {
@@ -1821,5 +1798,31 @@ if (!process.env.IS_WORKER) {
       options.start(arras)
     }
     return arras
-  })()
+  };
+
+  process.on('message', (message) => {
+    if (message.type === 'start') {
+      const config = message.config;
+      options.token = config.token;
+      options.loadFromCache = config.loadFromCache;
+      options.cache = config.cache;
+      options.arrasCache = config.arrasCache;
+
+      arrasInstance = initializeArras(config);
+      arrasInstance.then(function () {
+        currentBot = arrasInstance.create(config);
+      });
+    } else if (message.type === 'pause') {
+      isPaused = message.paused;
+      if (currentBot && currentBot.log) currentBot.log(`Bot state is now: ${isPaused ? 'PAUSED' : 'RESUMED'}`);
+    } else if (message.type === 'key_command') {
+      const { key } = message;
+      if (currentBot && currentBot.simulateKey) currentBot.simulateKey(key);
+    } else if (message.type === 'pathfinding') {
+      if (currentBot) currentBot.config.pathfinding = message.enabled;
+    } else if (message.type === 'stop_bot') {
+      if (currentBot && currentBot.destroy) currentBot.destroy();
+      process.exit();
+    }
+  });
 }
